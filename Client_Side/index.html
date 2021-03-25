@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>MongoDB</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Lucida Sans';
+        }
+
+        .container {
+            
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-evenly;
+            border: 1px solid black;
+            padding: 10px;
+            margin: 10px;
+        }
+
+        .output_area{
+            
+        }
+        form,
+        #forUpdate {
+            width: 300px;
+            /* border: .5px dashed black; */
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 5px;
+            margin-right: 10px;
+
+        }
+
+
+        input {
+            padding: 3px;
+            outline: 0;
+        }
+
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        button {
+            padding: 2px;
+        }
+
+        .btn {
+            padding: 2px;
+            margin-top: 5px;
+            margin-bottom: 30px;
+        }
+
+        button:hover {
+            cursor: pointer;
+            box-shadow: 0 0 5px 0 rgba(255, 0, 0, 0.5);
+        }
+
+
+        table,
+        th,
+        td {
+            border-collapse: collapse;
+            border: .5px solid black;
+        }
+
+        th,
+        td {
+            padding: 3px;
+        }
+
+        td:first-child,
+        td:last-child {
+            text-align: center;
+        }
+
+        td:nth-child(3) {
+            text-align: right;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>MongoDB!</h1>
+
+    <div class="container">
+
+        <div class="input_area">
+
+            <!-- CURD ==> "Create" "POST" Operation ==> OK -->
+            <form action="/addProduct" method="post">
+                <input type="text" placeholder="Product Name" name='name'>
+                <input type="number" placeholder="Price | autocomplete='off'" name='price' autocomplete="off">
+                <input type="text" placeholder="Quantity" name='quantity'>
+                <button type="submit">Add Product</button>
+            </form>
+
+            <button class="btn" onclick="clearData()">Clear</button>
+
+
+            <div id="forUpdate">
+
+            </div>
+        </div>
+
+        <div class="output_area">
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>No</th>
+                        <th>Fruits</th>
+                        <th>Price</th>
+                        <th>Quantity</th>
+                        <th colspan="2">CURD Operation</th>
+                    </tr>
+                </thead>
+                <tbody id="resultTable">
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+    <!-- 
+    ###################################################################
+    ###################################################################
+    ################################################################### 
+    -->
+
+    <script>
+        // for clearing all input fields...
+        const clearData = () => {
+            let inputs = document.getElementsByTagName('input');
+            for (data of inputs) {
+                data.value = ''
+            }
+        }
+
+        // CURD ==> "Read" "GET" Operation ==> OK
+        const loadDataFromMongoDB = () => {
+            // get data from MongoDB Server...
+            fetch('/products')
+                .then(res => res.json())
+                .then(data => {
+                    showData(data);
+                    //console.log(data);
+                });
+        };
+        loadDataFromMongoDB();
+
+        //===========================
+
+        const showData = data => {
+
+            const tableBody = document.getElementById('resultTable');
+            tableBody.innerHTML = null;
+            // vvi
+            // forEach use for accessing objects inside data[array]
+            data.forEach((object, index) => {
+                // destructuring...
+                const { _id, name, price, quantity } = object;
+
+                const row = `
+                    <tr>
+                        <td>${index + 1}</td>
+                        <td>${name}</td>
+                        <td>${price}/=</td>
+                        <td>${quantity}</td>
+                        <td>
+                            <button onclick="update('${_id}')" class="update">Update</button>
+                        </td>
+                        <td>
+                            <button onclick="remove(event , '${_id}')" class="remove">Remove</button>
+                        </td>
+                    </tr> ` ;
+
+                tableBody.innerHTML += row;
+            })
+
+        }
+
+
+
+
+        // CURD ==> "Update" "GET" Operation ==> 
+        const update = (id) => {
+            fetch(`/product/${id}`)
+                .then(res => res.json())
+                .then(data => {
+                    editableFormForUpdate(data);
+                    //console.log(data);
+                })
+        };
+
+        const editableFormForUpdate = data => {
+            const { _id, name, price, quantity } = data;
+            console.log(name, price, quantity);
+
+            const forUpdate = document.getElementById('forUpdate');
+            forUpdate.innerHTML = `
+                <p><small>Product ID : ${_id}</small></p>
+                <input type="text" value="${name}" id="name">
+                <input type="number" value="${price}" id="price">
+                <input type="text" value="${quantity}" id="quantity">
+                <button class="btn" onclick="updateEditableItem('${_id}')">Update Product</button>
+            `;
+            //console.log('Editable ==> ', data);
+        }
+
+        const updateEditableItem = (id) => {
+            const name = document.getElementById('name').value;
+            const price = document.getElementById('price').value;
+            const quantity = document.getElementById('quantity').value;
+
+            const product = { id, name, price, quantity };
+
+            fetch(`/update/${id}`, {
+                method: 'PATCH',
+                body: JSON.stringify(product),
+                headers: { 'Content-Type': 'application/json' },
+            })
+                .then(res => res.json())
+                .then(result => {
+                    if (result) {
+                        loadDataFromMongoDB();
+                        document.
+                            getElementById('forUpdate').
+                            innerHTML = null;
+                    }
+                });
+            alert("Update Successfully");
+        };
+
+
+
+        // CURD ==> "Delete" "Delete" Operation ==> OK
+        const remove = (event, id) => {
+
+            const grandParent = event.target.parentElement.parentNode;
+
+            const OK = confirm("Are you sure you want to delete?");
+
+            if (OK) {
+                fetch(`/delete/${id}`, {
+                    method: 'DELETE',
+                })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data) {
+                            grandParent.style.display = 'none';
+                        }
+                        console.log('Delete Successful!')
+                    });
+
+                alert('Delete Successful!');
+            } else {
+                alert('Your Product is not deleted...');
+            }
+
+        };
+
+    </script>
+</body>
+
+</html>
