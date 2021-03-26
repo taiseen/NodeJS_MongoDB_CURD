@@ -9,6 +9,8 @@
 // "start" : "nodemon index.js",
 // npm i
 
+// npm start 
+
 user = 'dbUser'
 pass = 'dbUs3rBD'
 //======================================================
